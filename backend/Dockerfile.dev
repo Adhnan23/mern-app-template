@@ -1,0 +1,19 @@
+# backend/Dockerfile.dev
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies including dev dependencies
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose port for backend
+EXPOSE 5000
+
+# Start development server with hot reload (using nodemon)
+CMD ["npm", "run", "dev"]

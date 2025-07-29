@@ -1,0 +1,66 @@
+# docker-compose.dev.yml
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:latest
+    container_name: mern_mongo_dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+    volumes:
+      - mongodb_data_dev:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - mern_network_dev
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: mern_backend_dev
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DATABASE}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${BACKEND_PORT}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - mern_network_dev
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: mern_frontend_dev
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT}:5173"
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - mern_network_dev
+
+volumes:
+  mongodb_data_dev:
+
+networks:
+  mern_network_dev:
+    driver: bridge

@@ -1,0 +1,57 @@
+# docker-compose.prod.yml
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:latest
+    container_name: mern_mongo_prod
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+    volumes:
+      - mongodb_data_prod:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - mern_network_prod
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: mern_backend_prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DATABASE}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${BACKEND_PORT}
+    depends_on:
+      - mongodb
+    networks:
+      - mern_network_prod
+
+  # Frontend Service (Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: mern_frontend_prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - mern_network_prod
+
+volumes:
+  mongodb_data_prod:
+
+networks:
+  mern_network_prod:
+    driver: bridge
