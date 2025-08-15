@@ -10,6 +10,7 @@ A complete Docker setup for MERN (MongoDB, Express.js, React, Node.js) stack wit
 - **Environment Management**: Separate configurations for dev/prod
 - **Database Initialization**: Automated MongoDB setup with sample data
 - **Security**: Non-root user in production, proper environment variables
+- **Podman Compatibility**: Full support for Podman and podman-compose as Docker alternatives
 
 ## 📁 Project Structure
 
@@ -34,6 +35,8 @@ mern-app/
 │   └── Dockerfile.prod
 ├── docker-compose.dev.yml
 ├── docker-compose.prod.yml
+├── podman-compose.dev.yml
+├── podman-compose.prod.yml
 ├── .env.dev
 ├── .env.prod
 ├── mongo-init.js
@@ -42,9 +45,15 @@ mern-app/
 
 ## 🛠️ Prerequisites
 
+### Docker Setup
 - Docker Desktop installed
 - Docker Compose installed
 - Node.js knowledge for MERN stack development
+
+### Podman Setup (Alternative)
+- Podman installed
+- podman-compose installed (`pip install podman-compose`)
+- For RHEL/Fedora/CentOS users: Podman comes pre-installed
 
 ## ⚙️ Environment Configuration
 
@@ -75,7 +84,9 @@ VITE_API_URL=http://localhost/api
 
 ## 🚀 Quick Start
 
-### Development Environment
+### Docker Setup
+
+#### Development Environment
 
 1. **Clone and setup your project**
    ```bash
@@ -98,7 +109,7 @@ VITE_API_URL=http://localhost/api
    docker-compose -f docker-compose.dev.yml logs -f
    ```
 
-### Production Environment
+#### Production Environment
 
 1. **Update production environment variables**
    ```bash
@@ -116,9 +127,54 @@ VITE_API_URL=http://localhost/api
    - Backend: Internal network only
    - MongoDB: Internal network only
 
+### Podman Setup
+
+#### Development Environment
+
+1. **Clone and setup your project**
+   ```bash
+   git clone <your-repo>
+   cd mern-app
+   ```
+
+2. **Start development environment**
+   ```bash
+   podman-compose -f podman-compose.dev.yml --env-file .env.dev up -d
+   ```
+
+3. **Access your application**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:5000
+   - MongoDB: mongodb://localhost:27017
+
+4. **View logs**
+   ```bash
+   podman-compose -f podman-compose.dev.yml logs -f
+   ```
+
+#### Production Environment
+
+1. **Update production environment variables**
+   ```bash
+   # Edit .env.prod with your production values
+   nano .env.prod
+   ```
+
+2. **Build and start production**
+   ```bash
+   podman-compose -f podman-compose.prod.yml --env-file .env.prod up -d --build
+   ```
+
+3. **Access your application**
+   - Frontend: http://localhost (port 80)
+   - Backend: Internal network only
+   - MongoDB: Internal network only
+
 ## 📋 Available Commands
 
-### Development Commands
+### Docker Commands
+
+#### Development Commands
 ```bash
 # Start development environment
 docker-compose -f docker-compose.dev.yml --env-file .env.dev up -d
@@ -136,7 +192,7 @@ docker-compose -f docker-compose.dev.yml down -v
 docker-compose -f docker-compose.dev.yml up -d --build backend
 ```
 
-### Production Commands
+#### Production Commands
 ```bash
 # Build and start production
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
@@ -151,7 +207,7 @@ docker-compose -f docker-compose.prod.yml down
 docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --force-recreate
 ```
 
-### Utility Commands
+#### Utility Commands
 ```bash
 # Execute commands in running containers
 docker exec -it mern_backend_dev bash
@@ -162,6 +218,54 @@ docker-compose -f docker-compose.dev.yml ps
 
 # Clean up everything (images, containers, volumes)
 docker system prune -a --volumes
+```
+
+### Podman Commands
+
+#### Development Commands
+```bash
+# Start development environment
+podman-compose -f podman-compose.dev.yml --env-file .env.dev up -d
+
+# View logs
+podman-compose -f podman-compose.dev.yml logs -f
+
+# Stop development environment
+podman-compose -f podman-compose.dev.yml down
+
+# Clean database (remove volumes)
+podman-compose -f podman-compose.dev.yml down -v
+
+# Rebuild specific service
+podman-compose -f podman-compose.dev.yml up -d --build backend
+```
+
+#### Production Commands
+```bash
+# Build and start production
+podman-compose -f podman-compose.prod.yml --env-file .env.prod up -d --build
+
+# View production logs
+podman-compose -f podman-compose.prod.yml logs -f
+
+# Stop production
+podman-compose -f podman-compose.prod.yml down
+
+# Update production (rebuild and restart)
+podman-compose -f podman-compose.prod.yml --env-file .env.prod up -d --build --force-recreate
+```
+
+#### Utility Commands
+```bash
+# Execute commands in running containers
+podman exec -it <container_name> bash
+podman exec -it <container_name> mongosh
+
+# Check container status
+podman-compose -f podman-compose.dev.yml ps
+
+# Clean up everything (images, containers, volumes)
+podman system prune -a --volumes
 ```
 
 ## 🔧 Development Setup
@@ -226,6 +330,12 @@ Your `backend/package.json` should include:
 - Nginx reverse proxy with security headers
 - Production-only dependencies
 
+### Podman Security Benefits
+- Rootless containers by default
+- Enhanced SELinux integration (on supported systems)
+- No daemon running as root
+- Better integration with systemd
+
 ## 🗄️ Database Setup
 
 The `mongo-init.js` script automatically:
@@ -255,62 +365,116 @@ In production, Nginx automatically proxies API requests:
 
 1. **Port already in use**
    ```bash
-   # Check what's using the port
+   # Docker
    lsof -i :5000
+   
+   # Podman
+   ss -tlnp | grep :5000
+   
    # Kill the process or change port in .env file
    ```
 
 2. **Environment variables not loading**
    ```bash
-   # Make sure you're using --env-file flag
+   # Docker - Make sure you're using --env-file flag
    docker-compose -f docker-compose.dev.yml --env-file .env.dev up -d
+   
+   # Podman - Make sure you're using --env-file flag
+   podman-compose -f podman-compose.dev.yml --env-file .env.dev up -d
    ```
 
 3. **Hot reload not working**
    ```bash
-   # Ensure volume mapping is correct and restart
+   # Docker
    docker-compose -f docker-compose.dev.yml down
    docker-compose -f docker-compose.dev.yml --env-file .env.dev up -d
+   
+   # Podman
+   podman-compose -f podman-compose.dev.yml down
+   podman-compose -f podman-compose.dev.yml --env-file .env.dev up -d
    ```
 
 4. **Database connection issues**
    ```bash
-   # Check if MongoDB is running
+   # Docker - Check if MongoDB is running
    docker-compose -f docker-compose.dev.yml ps
-   # Check logs
    docker-compose -f docker-compose.dev.yml logs mongodb
+   
+   # Podman - Check if MongoDB is running
+   podman-compose -f podman-compose.dev.yml ps
+   podman-compose -f podman-compose.dev.yml logs mongodb
    ```
+
+5. **SELinux issues (RHEL/Fedora/CentOS with Podman)**
+   ```bash
+   # Check SELinux context
+   ls -Z /path/to/your/project
+   
+   # Set proper context for volumes
+   sudo setsebool -P container_manage_cgroup on
+   ```
+
+### Podman-Specific Issues
+
+1. **Container names not working**
+   - Podman handles container naming differently
+   - Use `podman ps` to see actual container names
+   - Connect using service names in compose files instead
+
+2. **Volume permission issues**
+   - Use `:Z` flag in volume mounts for SELinux systems
+   - Check file ownership: `ls -la /path/to/volume`
+
+3. **Network connectivity issues**
+   - Ensure all services are in the same network
+   - Use service names for internal communication
 
 ### Reset Everything
 ```bash
-# Nuclear option - removes everything
+# Docker - Nuclear option - removes everything
 docker-compose -f docker-compose.dev.yml down -v
 docker system prune -a --volumes
+
+# Podman - Nuclear option - removes everything
+podman-compose -f podman-compose.dev.yml down -v
+podman system prune -a --volumes
 ```
 
 ## 📝 Development Workflow
 
-1. **Start development environment**
-2. **Make changes to your code** (hot reload works automatically)
-3. **Test your changes** in the browser
-4. **Commit your code**
-5. **Test in production environment** before deploying
-6. **Deploy to production server**
+1. **Choose your container runtime** (Docker or Podman)
+2. **Start development environment**
+3. **Make changes to your code** (hot reload works automatically)
+4. **Test your changes** in the browser
+5. **Commit your code**
+6. **Test in production environment** before deploying
+7. **Deploy to production server**
 
 ## 🚢 Deployment
 
 For production deployment:
 
-1. **Update `.env.prod`** with your production values
-2. **Copy files to your server**
-3. **Run production commands**
-4. **Set up SSL certificates** (recommended)
-5. **Configure domain name** (optional)
+1. **Choose your container runtime** (Docker or Podman)
+2. **Update `.env.prod`** with your production values
+3. **Copy files to your server**
+4. **Run production commands**
+5. **Set up SSL certificates** (recommended)
+6. **Configure domain name** (optional)
+
+### Why Choose Podman?
+
+- **Rootless by default**: Better security out of the box
+- **No daemon**: Lighter resource usage
+- **Systemd integration**: Better service management on Linux
+- **Drop-in Docker replacement**: Same commands, better security
+- **Enterprise-ready**: Preferred in RHEL/Fedora environments
 
 ## 📚 Additional Resources
 
 - [Docker Documentation](https://docs.docker.com/)
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [Podman Documentation](https://podman.io/docs)
+- [podman-compose Documentation](https://github.com/containers/podman-compose)
 - [React Documentation](https://react.dev/)
 - [Express.js Documentation](https://expressjs.com/)
 - [MongoDB Documentation](https://docs.mongodb.com/)
@@ -320,7 +484,7 @@ For production deployment:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test with both dev and prod environments
+4. Test with both dev and prod environments (Docker and/or Podman)
 5. Submit a pull request
 
 ## 📄 License
